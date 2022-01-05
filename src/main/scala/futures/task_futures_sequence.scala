@@ -1,8 +1,8 @@
 package futures
 
-import HomeworksUtils.TaskSyntax
-
+import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object task_futures_sequence {
 
@@ -20,6 +20,28 @@ object task_futures_sequence {
    * @return асинхронную задачу с кортежом из двух списков
    */
   def fullSequence[A](futures: List[Future[A]])
-                     (implicit ex: ExecutionContext): Future[(List[A], List[Throwable])] =
-    task"Реализуйте метод `fullSequence`"()
+                     (implicit ex: ExecutionContext): Future[(List[A], List[Throwable])] = {
+    @tailrec
+    def loop(list: List[Future[A]], success: List[A], failure: List[Throwable]):(List[A], List[Throwable]) = {
+      list match {
+        case head :: tail => {
+          while (!head.isCompleted){
+            Thread.sleep(30)
+          }
+          head.value match {
+            case Some(res) => res match {
+              case Success(value) => loop(tail, success.appended(value), failure)
+              case Failure(exception) => loop(tail, success, failure.appended(exception))
+            }
+          }
+        }
+        case Nil => (success, failure)
+      }
+    }
+    Future{
+      loop(futures, List(), List())
+    }
+  }
+
+
 }
